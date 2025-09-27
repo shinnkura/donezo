@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PomodoroKind {
+  FOCUS
+  SHORT_BREAK
+  LONG_BREAK
+}
+
+enum ReminderChannel {
+  NOTIFICATION
+  EMAIL
+}
+
+enum SyncOperation {
+  UPSERT
+  DELETE
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  projects         Project[]
+  tasks            Task[]
+  pomodoroSessions PomodoroSession[]
+  devices          Device[]
+  syncLogs         SyncLog[]
+  accounts         Account[]
+  sessions         Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  color     String   @default("#3b82f6")
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([userId, order])
+  @@map("projects")
+}
+
+model Task {
+  id             String    @id @default(uuid())
+  userId         String
+  projectId      String?
+  title          String
+  note           String?
+  dueAt          DateTime?
+  priority       Priority  @default(MEDIUM)
+  estimatePomos  Int       @default(1)
+  completedPomos Int       @default(0)
+  repeatRule     String?
+  isDone         Boolean   @default(false)
+  doneAt         DateTime?
+  order          Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  subtasks         Subtask[]
+  pomodoroSessions PomodoroSession[]
+  reminders        Reminder[]
+
+  @@index([userId, isDone, dueAt])
+  @@index([userId, projectId])
+  @@index([userId, order])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(uuid())
+  taskId    String
+  title     String
+  isDone    Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, order])
+  @@map("subtasks")
+}
+
+model PomodoroSession {
+  id           String       @id @default(uuid())
+  userId       String
+  taskId       String?
+  kind         PomodoroKind
+  startedAt    DateTime
+  endedAt      DateTime?
+  durationSec  Int
+  deviceId     String?
+  isCompleted  Boolean      @default(false)
+  note         String?
+  createdAt    DateTime     @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startedAt])
+  @@index([userId, taskId])
+  @@map("pomodoro_sessions")
+}
+
+model Reminder {
+  id        String          @id @default(uuid())
+  taskId    String
+  remindAt  DateTime
+  channel   ReminderChannel @default(NOTIFICATION)
+  isSent    Boolean         @default(false)
+  sentAt    DateTime?
+  createdAt DateTime        @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([remindAt, isSent])
+  @@map("reminders")
+}
+
+model Device {
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  platform   String
+  userAgent  String?
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pomodoroSessions PomodoroSession[]
+  syncLogs         SyncLog[]
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model SyncLog {
+  id            String        @id @default(uuid())
+  userId        String
+  entityType    String
+  entityId      String
+  operation     SyncOperation
+  data          Json?
+  deviceId      String?
+  syncedAt      DateTime      @default(now())
+  conflictData  Json?
+  isResolved    Boolean       @default(true)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, syncedAt])
+  @@index([entityType, entityId])
+  @@map("sync_logs")
+}
