@@ -1,14 +1,35 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { CheckSquare, Timer, TrendingUp, Plus } from 'lucide-react'
+import { FolderOpen, CheckSquare, Timer, TrendingUp, Plus, Calendar } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
+interface Project {
+  id: string
+  name: string
+  color: string
+  taskCount?: number
+  completedCount?: number
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const router = useRouter()
+  const [projects, setProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    // デモデータ
+    setProjects([
+      { id: 'work', name: 'WORK', color: '#3B82F6', taskCount: 21, completedCount: 12 },
+      { id: 'study', name: 'STUDY', color: '#10B981', taskCount: 11, completedCount: 7 },
+      { id: 'develop', name: 'DEVELOP', color: '#8B5CF6', taskCount: 8, completedCount: 3 },
+    ])
+  }, [])
 
   // TODO: 実際のデータに置き換える
   const stats = {
@@ -24,17 +45,15 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">ダッシュボード</h1>
+          <h1 className="text-3xl font-bold text-foreground">オーバービュー</h1>
           <p className="text-muted-foreground">
-            今日も一日お疲れ様でした、{session?.user?.name}さん
+            こんにちは、{session?.user?.name}さん
           </p>
         </div>
-        <Link href="/tasks">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            新しいタスク
-          </Button>
-        </Link>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          新しいプロジェクト
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -83,25 +102,48 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>タスク進捗</CardTitle>
-            <CardDescription>
-              全体のタスク完了率
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Progress value={completionRate} className="w-full" />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                {stats.completedTasks}/{stats.totalTasks} 完了
-              </span>
-              <span className="font-medium">{Math.round(completionRate)}%</span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* プロジェクト一覧 */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">プロジェクト</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {projects.map((project) => {
+            const projectCompletionRate = project.taskCount
+              ? (project.completedCount! / project.taskCount) * 100
+              : 0
 
+            return (
+              <Link key={project.id} href={`/projects/${project.id}`}>
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: project.color + "20" }}
+                        >
+                          <FolderOpen className="h-4 w-4" style={{ color: project.color }} />
+                        </div>
+                        <CardTitle className="text-base">{project.name}</CardTitle>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Progress value={projectCompletionRate} className="h-2 mb-2" />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {project.completedCount}/{project.taskCount} タスク
+                      </span>
+                      <span className="font-medium">{Math.round(projectCompletionRate)}%</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>最近のアクティビティ</CardTitle>
@@ -126,12 +168,10 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>今日のタスク</CardTitle>
+            <CardTitle>今日のフォーカス</CardTitle>
             <CardDescription>
               本日予定されているタスク
             </CardDescription>
@@ -139,27 +179,32 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm">メール返信</span>
-                <Button variant="outline" size="sm">
-                  開始
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span className="text-sm">メール返信</span>
+                </div>
+                <span className="text-xs text-muted-foreground">WORK</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm">週次レポート作成</span>
-                <Button variant="outline" size="sm">
-                  開始
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm">週次レポート作成</span>
+                </div>
+                <span className="text-xs text-muted-foreground">STUDY</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm">チーム会議準備</span>
-                <Button variant="outline" size="sm">
-                  開始
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span className="text-sm">チーム会議準備</span>
+                </div>
+                <span className="text-xs text-muted-foreground">DEVELOP</span>
               </div>
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>クイックアクション</CardTitle>
@@ -168,10 +213,10 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/tasks">
+            <Link href="/today">
               <Button variant="outline" className="w-full justify-start">
-                <CheckSquare className="mr-2 h-4 w-4" />
-                タスク管理
+                <Calendar className="mr-2 h-4 w-4" />
+                今日のタスク
               </Button>
             </Link>
             <Link href="/timer">
@@ -186,6 +231,38 @@ export default function DashboardPage() {
                 レポート表示
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>進捗サマリー</CardTitle>
+            <CardDescription>
+              全プロジェクトの進捗状況
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium">WORK</span>
+                <span className="text-sm text-muted-foreground">57%</span>
+              </div>
+              <Progress value={57} className="h-2" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium">STUDY</span>
+                <span className="text-sm text-muted-foreground">64%</span>
+              </div>
+              <Progress value={64} className="h-2" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium">DEVELOP</span>
+                <span className="text-sm text-muted-foreground">38%</span>
+              </div>
+              <Progress value={38} className="h-2" />
+            </div>
           </CardContent>
         </Card>
       </div>
