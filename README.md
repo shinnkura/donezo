@@ -53,10 +53,74 @@
 
 ### 前提条件
 - Node.js 18+
-- PostgreSQL 14+
+- Docker & Docker Compose（推奨）
+- または PostgreSQL 14+
 - npm または yarn
 
-### インストール手順
+### 🐳 Docker環境でのセットアップ（推奨）
+
+#### 開発環境（PostgreSQLのみDockerで起動）
+
+1. **リポジトリのクローン**
+```bash
+git clone https://github.com/yourusername/donezo.git
+cd donezo
+```
+
+2. **依存関係のインストール**
+```bash
+npm install
+```
+
+3. **PostgreSQLをDockerで起動**
+```bash
+make dev
+# または
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+4. **環境変数の設定**
+`.env`ファイルを作成（`.env.docker`をコピー）：
+```bash
+cp .env.docker .env
+```
+
+5. **データベースマイグレーション**
+```bash
+npm run db:migrate
+```
+
+6. **開発サーバーの起動**
+```bash
+npm run dev
+```
+
+#### フルDocker環境（アプリケーション全体をDockerで起動）
+
+```bash
+# Dockerイメージをビルド
+make build
+
+# アプリケーション全体を起動
+make up
+
+# ログを確認
+make logs
+```
+
+### 📝 便利なMakeコマンド
+
+```bash
+make help        # ヘルプを表示
+make dev         # PostgreSQLのみ起動
+make dev-down    # PostgreSQLを停止
+make migrate     # マイグレーション実行
+make studio      # Prisma Studio起動
+make psql        # PostgreSQLに接続
+make reset-db    # DBをリセット＆初期化
+```
+
+### インストール手順（ローカル環境）
 
 1. **リポジトリのクローン**
 ```bash
